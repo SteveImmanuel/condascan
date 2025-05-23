@@ -139,17 +139,17 @@ def main():
 
     table = Table(title='Result Summary', box=box.MINIMAL_HEAVY_HEAD, show_lines=True)
     table.add_column('Environment', style='cyan')
-    table.add_column('Total packages installed', style='yellow')
-    table.add_column('score', style='magenta', justify='left')
+    table.add_column('Total packages installed', style='magenta')
+    table.add_column('Info', justify='left')
     for env in filtered_envs:
         info = []
         for package, (status, detail) in env[3]:
             if status == PackageCode.MISSING:
-                info.append(f':x: {package}: missing')
+                info.append(f':x: [red]{package}: missing[/red]')
             elif status == PackageCode.VERSION_INVALID or status == PackageCode.VERSION_MISMATCH:
-                info.append(f'⚠️  {package}: {detail}')
+                info.append(f'⚠️  [yellow]{package}: {detail}[/yellow]')
             elif status == PackageCode.FOUND:
-                info.append(f'✅ {package}=={detail}')
+                info.append(f'✅ [green]{package}=={detail}[/green]')
         table.add_row(env[0], str(env[2]), '\n'.join(info))
 
     console.print(table)
