@@ -5,6 +5,8 @@ def parse_args():
     parser.add_argument('--have', nargs='+', help='Package(s) to search for in conda environments', metavar='PACKAGE')
     parser.add_argument('--full', action='store_true', help='Perform a full search over all conda environments. By default, the first environment that satisfies the requirements is returned.')
     parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
+    parser.add_argument('--limit', type=int, help='Limit the number of environments displayed in the output. Use in conjunction with verbose', default=-1)
+
 
     args = parser.parse_args()
     return args
