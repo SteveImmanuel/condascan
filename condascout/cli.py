@@ -1,10 +1,14 @@
 import subprocess
-from tqdm import tqdm
+import shutil
+from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, SpinnerColumn
+from rich.console import Console
 from packaging.version import Version
 from packaging.requirements import Requirement, InvalidRequirement
 from condascout.parser import parse_args
 from condascout.codes import ReturnCode, PackageCode
 from typing import List, Union, Tuple
+
+console = Console()
 
 def run_shell_command(command: List[str]) -> Tuple[ReturnCode, Union[subprocess.CompletedProcess, Exception]]:
     try:
@@ -40,7 +44,7 @@ def try_get_version(version: str) -> bool:
     except Exception:
         return None
 
-def check_packages_in_env(env: str, requirements: List[Requirement]) -> List[str]:
+def check_packages_in_env(env: str, requirements: List[Requirement]) -> Tuple[int, int, List]:
     result = run_shell_command(['conda', 'list', '-n', env])
     if result[0] != ReturnCode.EXECUTED:
         return []
@@ -79,10 +83,22 @@ def check_packages_in_env(env: str, requirements: List[Requirement]) -> List[str
     score = sum([x[0].value for x in package_status.values()])
     return score, len(installed_packages), [(package, status) for package, status in package_status.items() if status[0] != PackageCode.FOUND]
 
+def can_execute_in_env(env: str, command: str) -> Tuple[bool, str]:
+    result = run_shell_command(['conda', 'run', '-n', env, *command.split(' ')])
+    if result[0] != ReturnCode.EXECUTED:
+        return False, ''
+    
+    if result[1].returncode == 0:
+        return True, result[1].stdout
+    else:
+        return False, result[1].stderr
+
 def main():
     args = parse_args()
     # print('asdasd')
     # print(f"Arguments received: {args}")
+
+    # print(can_execute_in_env('base', 'which nvcc'))
 
     requirements = []
     for package in args.have:
@@ -99,13 +115,24 @@ def main():
 
     conda_envs = get_conda_envs()
     filtered_envs = []
-    pbar = tqdm(conda_envs, total=len(conda_envs))
-    for env in pbar:
-        pbar.set_description(f'Checking "{env}"')
-        missing_packages = (env, *check_packages_in_env(env, requirements))
-        filtered_envs.append(missing_packages)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn('[bold blue]{task.description}'),
+        BarColumn(),
+        '[progress.percentage]{task.percentage:>3.0f}%',
+        TimeRemainingColumn(),
+        console=console,
+        transient=True,
+    ) as progress:
+        task = progress.add_task('Checking conda environments', total=len(conda_envs))
+        
+        for env in conda_envs:
+            progress.update(task, description=f'Checking "{env}"')
+            # pbar.set_description(f'Checking "{env}"')
+            missing_packages = (env, *check_packages_in_env(env, requirements))
+            filtered_envs.append(missing_packages)
+            progress.advance(task)
     filtered_envs.sort(key=lambda x: (x[1], x[2]))
-    import pdb; pdb.set_trace()
 
 if __name__ == '__main__':
     main()
