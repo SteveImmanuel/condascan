@@ -22,7 +22,7 @@ def run_shell_command(command: List[str]) -> Tuple[ReturnCode, Union[subprocess.
     except Exception as e:
         return (ReturnCode.UNHANDLED_ERROR, e)
 
-def check_conda_installed():
+def check_conda_installed() -> bool:
     result = run_shell_command(['conda', '--version'])
     if result[0] == ReturnCode.EXECUTED:
         return result[1].returncode == 0
@@ -47,7 +47,7 @@ def try_get_version(version: str) -> bool:
     except Exception:
         return None
 
-def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict) -> Tuple[int, int, List]:
+def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict) -> Tuple[Tuple, List]:
     if cache.get(env) is None:
         result = run_shell_command(['conda', 'list', '-n', env])
         if result[0] != ReturnCode.EXECUTED:
@@ -58,8 +58,9 @@ def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict
         installed_packages = cache[env]
 
     package_status = {x.name: (PackageCode.MISSING, x.specifier) for x in requirements}
-    total_found = 0
-    
+    scores = [0, 0, 0, len(installed_packages)] # found, invalid, mismatch, #packages 
+    python_version = 'Not Available'
+
     try:
         for line in installed_packages:
             if line != '' and not line.startswith('#'):
@@ -75,20 +76,24 @@ def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict
                     if req.name == package:
                         if version is None:
                             package_status[req.name] = (PackageCode.VERSION_INVALID, f'Expected "{req.specifier}", found "{version}". Version is not in PEP 440 format.')
+                            scores[1] += 1
                         elif req.specifier == '' or req.specifier.contains(version):
                             package_status[req.name] = (PackageCode.FOUND, version)
-                            total_found += 1
+                            scores[0] += 1
                         else:
                             package_status[req.name] = (PackageCode.VERSION_MISMATCH, f'Expected "{req.specifier}", found "{version}"')
+                            scores[2] += 1
                 
-                if total_found == len(requirements):
+                if package == 'python':
+                    python_version = version
+
+                if scores[0] == len(requirements):
                     break
     except Exception as e:
         console.print(f'[red]Unhandled Error in processing "{env}":[/red] {str(e)}')
         sys.exit(1)
 
-    score = sum([x[0].value for x in package_status.values()])
-    return score, len(installed_packages), [(package, status) for package, status in package_status.items()]
+    return scores, [(package, status) for package, status in package_status.items()], python_version
 
 def can_execute_in_env(env: str, command: str) -> Tuple[bool, str]:
     result = run_shell_command(['conda', 'run', '-n', env, *command.split(' ')])
@@ -146,14 +151,15 @@ def main():
         
         for env in conda_envs:
             progress.update(task, description=f'Checking "{env}"')
-            missing_packages = (env, *check_packages_in_env(env, requirements, cached_envs))
-            filtered_envs.append(missing_packages)
+            result = (env, *check_packages_in_env(env, requirements, cached_envs))
+            filtered_envs.append(result)
             progress.advance(task)
-    filtered_envs.sort(key=lambda x: (x[1], x[2]))
+    filtered_envs.sort(key=lambda x: (-x[1][0], -x[1][1], -x[1][2], x[1][3]))
 
     table = Table(title='Result Summary', box=box.MINIMAL_HEAVY_HEAD, show_lines=True)
-    table.add_column('Environment', style='cyan')
-    table.add_column('Total packages installed', style='magenta')
+    table.add_column('Environment', style='cyan', justify='left')
+    table.add_column('Python Version', style='blue', justify='left')
+    table.add_column('Total Packages Installed', style='magenta', justify='left')
     table.add_column('Info', justify='left')
 
     if args.limit != -1:
@@ -161,16 +167,16 @@ def main():
         filtered_envs = filtered_envs[:args.limit]
     for env in filtered_envs:
         info = []
-        for package, (status, detail) in env[3]:
+        for package, (status, detail) in env[2]:
             if status == PackageCode.MISSING:
-                info.append(f':x: [red]{package}: missing[/red]')
+                info.append(f'[red]:x: {package}: missing[/red]')
             elif status == PackageCode.VERSION_INVALID or status == PackageCode.VERSION_MISMATCH:
-                info.append(f'⚠️  [yellow]{package}: {detail}[/yellow]')
+                info.append(f'[yellow]:warning: {package}: {detail}[/yellow]')
             elif status == PackageCode.FOUND:
-                info.append(f'✅ [green]{package}=={detail}[/green]')
+                info.append(f'[green]:heavy_check_mark: {package}=={detail}[/green]')
             elif status == PackageCode.ERROR:
-                info.append(f'❗ [red]{package}: {detail}[/red]')
-        table.add_row(env[0], str(env[2]), '\n'.join(info))
+                info.append(f'[red]:exclamation: {package}: {detail}[/red]')
+        table.add_row(env[0], str(env[3]), str(env[1][3]), '\n'.join(info))
 
     console.print(table)
     write_cache(cached_envs)
