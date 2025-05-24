@@ -10,6 +10,7 @@ from packaging.requirements import Requirement, InvalidRequirement
 from condascout.parser import parse_args, parse_packages, standarize_package_name
 from condascout.codes import ReturnCode, PackageCode
 from condascout.cache import get_cache, write_cache
+from condascout.display import display_have_table_output
 
 console = Console()
 
@@ -156,29 +157,7 @@ def main():
             progress.advance(task)
     filtered_envs.sort(key=lambda x: (-x[1][0], -x[1][1], -x[1][2], x[1][3]))
 
-    table = Table(title='Result Summary', box=box.MINIMAL_HEAVY_HEAD, show_lines=True)
-    table.add_column('Environment', style='cyan', justify='left')
-    table.add_column('Python Version', style='blue', justify='left')
-    table.add_column('Total Packages Installed', style='magenta', justify='left')
-    table.add_column('Info', justify='left')
-
-    if args.limit != -1:
-        console.print(f'[bold]Limiting output to {args.limit} environments[/bold]')
-        filtered_envs = filtered_envs[:args.limit]
-    for env in filtered_envs:
-        info = []
-        for package, (status, detail) in env[2]:
-            if status == PackageCode.MISSING:
-                info.append(f'[red]:x: {package}: missing[/red]')
-            elif status == PackageCode.VERSION_INVALID or status == PackageCode.VERSION_MISMATCH:
-                info.append(f'[yellow]:warning: {package}: {detail}[/yellow]')
-            elif status == PackageCode.FOUND:
-                info.append(f'[green]:heavy_check_mark: {package}=={detail}[/green]')
-            elif status == PackageCode.ERROR:
-                info.append(f'[red]:exclamation: {package}: {detail}[/red]')
-        table.add_row(env[0], str(env[3]), str(env[1][3]), '\n'.join(info))
-
-    console.print(table)
+    display_have_table_output(filtered_envs, args.limit)
     write_cache(cached_envs)
 
 

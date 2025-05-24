@@ -1,0 +1,31 @@
+from rich import box
+from rich.console import Console
+from rich.table import Table
+from typing import List, Tuple, Dict, Union
+from condascout.codes import PackageCode
+console = Console()
+
+def display_have_table_output(filtered_envs: Tuple, limit: int = -1) -> Table:
+    table = Table(title='Result Summary', box=box.MINIMAL_HEAVY_HEAD, show_lines=True)
+    table.add_column('Environment', style='cyan', justify='left')
+    table.add_column('Python Version', style='blue', justify='left')
+    table.add_column('Total Packages Installed', style='magenta', justify='left')
+    table.add_column('Info', justify='left')
+
+    if limit != -1:
+        console.print(f'[bold]Limiting output to {limit} environments[/bold]')
+        filtered_envs = filtered_envs[:limit]
+    for env in filtered_envs:
+        info = []
+        for package, (status, detail) in env[2]:
+            if status == PackageCode.MISSING:
+                info.append(f'[red]:x: {package}: missing[/red]')
+            elif status == PackageCode.VERSION_INVALID or status == PackageCode.VERSION_MISMATCH:
+                info.append(f'[yellow]:warning: {package}: {detail}[/yellow]')
+            elif status == PackageCode.FOUND:
+                info.append(f'[green]:heavy_check_mark: {package}=={detail}[/green]')
+            elif status == PackageCode.ERROR:
+                info.append(f'[red]:exclamation: {package}: {detail}[/red]')
+        table.add_row(env[0], str(env[3]), str(env[1][3]), '\n'.join(info))
+
+    console.print(table)
