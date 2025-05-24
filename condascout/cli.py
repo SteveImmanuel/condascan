@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from typing import List, Union, Tuple, Dict
 from rich import box
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, SpinnerColumn
 from rich.console import Console
@@ -8,7 +9,7 @@ from packaging.version import Version
 from packaging.requirements import Requirement, InvalidRequirement
 from condascout.parser import parse_args
 from condascout.codes import ReturnCode, PackageCode
-from typing import List, Union, Tuple
+from condascout.cache import get_cache, write_cache
 
 console = Console()
 
@@ -46,14 +47,18 @@ def try_get_version(version: str) -> bool:
     except Exception:
         return None
 
-def check_packages_in_env(env: str, requirements: List[Requirement]) -> Tuple[int, int, List]:
-    result = run_shell_command(['conda', 'list', '-n', env])
-    if result[0] != ReturnCode.EXECUTED:
-        return []
+def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict) -> Tuple[int, int, List]:
+    if cache.get(env) is None:
+        result = run_shell_command(['conda', 'list', '-n', env])
+        if result[0] != ReturnCode.EXECUTED:
+            return float('inf'), float('inf'), [('', (PackageCode.ERROR, 'Error checking environment'))]
+        installed_packages = result[1].stdout.splitlines()
+        cache[env] = installed_packages
+    else:
+        installed_packages = cache[env]
 
     package_status = {x.name: (PackageCode.MISSING, x.specifier) for x in requirements}
     total_found = 0
-    installed_packages = result[1].stdout.splitlines()
     
     try:
         for line in installed_packages:
@@ -104,8 +109,11 @@ def main():
         console.print('[red]:x: Conda is not installed or not found in PATH[/red]')
         sys.exit(1)
 
+    if args.subcommand != 'have':
+        raise NotImplementedError()
+
     requirements = []
-    for package in args.have:
+    for package in args.packages:
         try:
             req = Requirement(package)
             requirements.append(req)
@@ -115,6 +123,17 @@ def main():
     console.print(f'[green]:heavy_check_mark: Requirements parsed successfully[/green]')
     for req in requirements:
         console.print(f' [green] - {req.name}{req.specifier}[/green]')
+
+    if not args.no_cache:
+        cached_envs = get_cache()
+        if cached_envs is None:
+            console.print('[bold yellow]Cache not found or invalid. Running without cache, this may take a while[/bold yellow]')
+            cached_envs = {}
+        else:
+            console.print('[bold]Running using cache. If there are changes to your conda environments since the last time you run this command, try running with --no-cache[/bold]')
+    else:
+        console.print('[bold yellow]Running without cache, this may take a while[/bold yellow]')
+        cached_envs = {}
 
     console.print('[bold]Finding valid environments[/bold]')
     conda_envs = get_conda_envs()
@@ -132,7 +151,7 @@ def main():
         
         for env in conda_envs:
             progress.update(task, description=f'Checking "{env}"')
-            missing_packages = (env, *check_packages_in_env(env, requirements))
+            missing_packages = (env, *check_packages_in_env(env, requirements, cached_envs))
             filtered_envs.append(missing_packages)
             progress.advance(task)
     filtered_envs.sort(key=lambda x: (x[1], x[2]))
@@ -141,6 +160,10 @@ def main():
     table.add_column('Environment', style='cyan')
     table.add_column('Total packages installed', style='magenta')
     table.add_column('Info', justify='left')
+
+    if args.limit != -1:
+        console.print(f'[bold]Limiting output to {args.limit} environments[/bold]')
+        filtered_envs = filtered_envs[:args.limit]
     for env in filtered_envs:
         info = []
         for package, (status, detail) in env[3]:
@@ -150,9 +173,12 @@ def main():
                 info.append(f'⚠️  [yellow]{package}: {detail}[/yellow]')
             elif status == PackageCode.FOUND:
                 info.append(f'✅ [green]{package}=={detail}[/green]')
+            elif status == PackageCode.ERROR:
+                info.append(f'❗ [darkred]{package}: {detail}[/darkred]')
         table.add_row(env[0], str(env[2]), '\n'.join(info))
 
     console.print(table)
+    write_cache(cached_envs)
 
 
 if __name__ == '__main__':
