@@ -17,7 +17,8 @@ classifiers = [
 keywords = ["conda", "anaconda", "miniconda"]
 dependencies = [
     "rich",
-    "packaging"
+    "packaging",
+    "pyyaml"
 ]
 requires-python = ">=3.8"
 
