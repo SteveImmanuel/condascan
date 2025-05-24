@@ -8,6 +8,6 @@ class ReturnCode(Enum):
 class PackageCode(Enum):
     FOUND = 0
     VERSION_INVALID = 1
-    VERSION_MISMATCH = 1000
-    MISSING = 1000000
-    ERROR = 1000000000
+    VERSION_MISMATCH = 2
+    MISSING = 3
+    ERROR = 4
