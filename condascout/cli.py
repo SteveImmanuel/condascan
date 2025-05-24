@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.table import Table
 from packaging.version import Version
 from packaging.requirements import Requirement, InvalidRequirement
-from condascout.parser import parse_args
+from condascout.parser import parse_args, parse_packages, standarize_package_name
 from condascout.codes import ReturnCode, PackageCode
 from condascout.cache import get_cache, write_cache
 
@@ -68,6 +68,7 @@ def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict
                 if package == '':
                     continue
                 
+                package = standarize_package_name(package)
                 version = try_get_version(version)
 
                 for req in requirements:
@@ -112,14 +113,8 @@ def main():
     if args.subcommand != 'have':
         raise NotImplementedError()
 
-    requirements = []
-    for package in args.packages:
-        try:
-            req = Requirement(package)
-            requirements.append(req)
-        except InvalidRequirement as e:
-            console.print(f':x:[red] Invalid requirement "{package}"[/red]')
-            sys.exit(1)
+    requirements = parse_packages(args.packages)
+    
     console.print(f'[green]:heavy_check_mark: Requirements parsed successfully[/green]')
     for req in requirements:
         console.print(f' [green] - {req.name}{req.specifier}[/green]')
@@ -174,7 +169,7 @@ def main():
             elif status == PackageCode.FOUND:
                 info.append(f'✅ [green]{package}=={detail}[/green]')
             elif status == PackageCode.ERROR:
-                info.append(f'❗ [darkred]{package}: {detail}[/darkred]')
+                info.append(f'❗ [red]{package}: {detail}[/red]')
         table.add_row(env[0], str(env[2]), '\n'.join(info))
 
     console.print(table)

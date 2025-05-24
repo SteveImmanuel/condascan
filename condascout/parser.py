@@ -49,7 +49,7 @@ def parse_packages(packages: str):
                     if line == '' or line.startswith('#'):
                         continue
                     if 'git+' in line:
-                        console.print(f':warning:[yellow] Skipping git package requirement "{line}"[/yellow]')
+                        console.print(f':warning:[yellow] Skipping git package requirement: "{line}"[/yellow]')
                         continue
                     if '@' in line:
                         line = line.split('@')[0].strip()
@@ -61,6 +61,7 @@ def parse_packages(packages: str):
             for dep in raw_req.get('dependencies', []):
                 if isinstance(dep, str):
                     if dep.startswith('_'):
+                        console.print(f':warning:[yellow] Skipping package name which starts with _: "{dep}"[/yellow]')
                         continue
                     dep = dep.strip().split('=')
                     requirements.append(f'{dep[0]}=={dep[1]}' if len(dep) > 1 else dep[0])
@@ -74,8 +75,12 @@ def parse_packages(packages: str):
     for i in range(len(requirements)):
         try:
             requirements[i] = Requirement(requirements[i])
+            requirements[i].name = standarize_package_name(requirements[i].name)
         except InvalidRequirement as e:
             console.print(f':x:[red] Invalid requirement "{requirements[i]}"[/red]')
             sys.exit(1)
 
     return requirements
+
+def standarize_package_name(name: str):
+    return name.lower().replace('_', '-')
