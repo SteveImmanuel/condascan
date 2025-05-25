@@ -80,6 +80,10 @@ def parse_packages(packages: str):
             console.print(f':x:[red] Invalid requirement "{requirements[i]}"[/red]')
             sys.exit(1)
 
+    console.print(f'[green]:heavy_check_mark: Requirements parsed successfully[/green]')
+    for req in requirements:
+        console.print(f' [green] - {req.name}{req.specifier}[/green]')
+        
     return requirements
 
 def standarize_package_name(name: str):
