@@ -1,10 +1,8 @@
 import subprocess
 import sys
 from typing import List, Union, Tuple, Dict
-from rich import box
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, SpinnerColumn
 from rich.console import Console
-from rich.table import Table
 from packaging.version import Version
 from packaging.requirements import Requirement, InvalidRequirement
 from condascout.parser import parse_args, parse_packages, standarize_package_name
@@ -48,7 +46,7 @@ def try_get_version(version: str) -> bool:
     except Exception:
         return None
 
-def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict) -> Tuple[Tuple, List]:
+def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict) -> Tuple[Tuple, List, str, bool]:
     if cache.get(env) is None:
         result = run_shell_command(['conda', 'list', '-n', env])
         if result[0] != ReturnCode.EXECUTED:
@@ -94,7 +92,7 @@ def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict
         console.print(f'[red]Unhandled Error in processing "{env}":[/red] {str(e)}')
         sys.exit(1)
 
-    return scores, [(package, status) for package, status in package_status.items()], python_version
+    return scores, [(package, status) for package, status in package_status.items()], python_version, scores[0] == len(requirements)
 
 def can_execute_in_env(env: str, command: str) -> Tuple[bool, str]:
     result = run_shell_command(['conda', 'run', '-n', env, *command.split(' ')])
@@ -110,33 +108,27 @@ def main():
     args = parse_args()
 
     console.print('[bold]Initial checks[/bold]')
+    if args.limit <= 0:
+        console.print('[red]Limit argument must be greater than 0[/red]')
+        sys.exit(1)
+
     if check_conda_installed():
         console.print('[green]:heavy_check_mark: Conda is installed[/green] ')
     else:
         console.print('[red]:x: Conda is not installed or not found in PATH[/red]')
         sys.exit(1)
-
+    
     if args.subcommand != 'have':
         raise NotImplementedError()
 
     requirements = parse_packages(args.packages)
-    
-    console.print(f'[green]:heavy_check_mark: Requirements parsed successfully[/green]')
-    for req in requirements:
-        console.print(f' [green] - {req.name}{req.specifier}[/green]')
 
     if not args.no_cache:
         cached_envs = get_cache()
-        if cached_envs is None:
-            console.print('[bold yellow]Cache not found or invalid. Running without cache, this may take a while[/bold yellow]')
-            cached_envs = {}
-        else:
-            console.print('[bold]Running using cache. If there are changes to your conda environments since the last time you run this command, try running with --no-cache[/bold]')
     else:
-        console.print('[bold yellow]Running without cache, this may take a while[/bold yellow]')
         cached_envs = {}
+        console.print('[bold yellow]Running without cache, this may take a while[/bold yellow]')
 
-    console.print('[bold]Finding valid environments[/bold]')
     conda_envs = get_conda_envs()
     filtered_envs = []
     with Progress(
@@ -155,10 +147,13 @@ def main():
             result = (env, *check_packages_in_env(env, requirements, cached_envs))
             filtered_envs.append(result)
             progress.advance(task)
+            if args.first and result[-1]:
+                break
     filtered_envs.sort(key=lambda x: (-x[1][0], -x[1][1], -x[1][2], x[1][3]))
 
-    display_have_table_output(filtered_envs, args.limit)
     write_cache(cached_envs)
+    
+    display_have_table_output(filtered_envs, args.limit, args.verbose, args.first)
 
 
 if __name__ == '__main__':
