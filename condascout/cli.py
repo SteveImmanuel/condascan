@@ -89,7 +89,7 @@ def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict
                 if scores[0] == len(requirements):
                     break
     except Exception as e:
-        console.print(f'[red]Unhandled Error in processing "{env}":[/red] {str(e)}')
+        console.print(f'[red]Unhandled Error in processing "{env}": {str(e)} [/red]')
         sys.exit(1)
 
     return scores, [(package, status) for package, status in package_status.items()], python_version, scores[0] == len(requirements)
@@ -108,7 +108,7 @@ def main():
     args = parse_args()
 
     console.print('[bold]Initial checks[/bold]')
-    if args.limit <= 0:
+    if args.limit <= 0 and args.limit != -1:
         console.print('[red]Limit argument must be greater than 0[/red]')
         sys.exit(1)
 
