@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "condascout"
-version = "0.1.0"
+version = "0.4.1"
 description = "CLI tool to look for the best conda environment which satisfies certain requirements"
 readme = "readme.md"
 authors = [{ name = "Steve Immanuel", email = "iam.steve.immanuel@gmail.com" }]
@@ -35,7 +35,7 @@ Homepage = "https://github.com/SteveImmanuel/condascout"
 pythonpath = ["condascout"]
 
 [tool.bumpver]
-current_version = "0.1.3"
+current_version = "0.4.1"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message  = "Bump version {old_version} -> {new_version}"
 commit          = false
