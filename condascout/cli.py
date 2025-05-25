@@ -8,7 +8,7 @@ from packaging.requirements import Requirement, InvalidRequirement
 from condascout.parser import parse_args, parse_packages, standarize_package_name
 from condascout.codes import ReturnCode, PackageCode
 from condascout.cache import get_cache, write_cache
-from condascout.display import display_have_table_output
+from condascout.display import display_have_table_output, get_progress_bar
 
 console = Console()
 
@@ -131,15 +131,7 @@ def main():
 
     conda_envs = get_conda_envs()
     filtered_envs = []
-    with Progress(
-        SpinnerColumn(),
-        TextColumn('[bold blue]{task.description}'),
-        BarColumn(),
-        '[progress.percentage]{task.percentage:>3.0f}%',
-        TimeRemainingColumn(),
-        console=console,
-        transient=True,
-    ) as progress:
+    with get_progress_bar(console) as progress:
         task = progress.add_task('Checking conda environments', total=len(conda_envs))
         
         for env in conda_envs:

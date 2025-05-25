@@ -1,9 +1,22 @@
 from rich import box
 from rich.console import Console
+from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, SpinnerColumn
 from rich.table import Table
 from typing import List, Tuple, Dict, Union
 from condascout.codes import PackageCode
+
 console = Console()
+
+def get_progress_bar(console: Console) -> Progress:
+    return Progress(
+        SpinnerColumn(),
+        TextColumn('[bold blue]{task.description}'),
+        BarColumn(),
+        '[progress.percentage]{task.percentage:>3.0f}%',
+        TimeRemainingColumn(),
+        console=console,
+        transient=True,
+    )
 
 def display_have_table_output(filtered_envs: Tuple, limit: int = -1, verbose: bool = False, first: bool = False) -> Table:
     if verbose:
