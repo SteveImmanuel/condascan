@@ -18,7 +18,7 @@ def get_progress_bar(console: Console) -> Progress:
         transient=True,
     )
 
-def display_have_table_output(filtered_envs: Tuple, limit: int = -1, verbose: bool = False, first: bool = False) -> Table:
+def display_have_output(filtered_envs: Tuple, limit: int = -1, verbose: bool = False, first: bool = False) -> Table:
     if verbose:
         table = Table(box=box.MINIMAL_HEAVY_HEAD, show_lines=True)
         table.add_column('Environment', style='cyan', justify='left')

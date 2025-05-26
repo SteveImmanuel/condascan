@@ -1,14 +1,13 @@
 import subprocess
 import sys
 from typing import List, Union, Tuple, Dict
-from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, SpinnerColumn
 from rich.console import Console
 from packaging.version import Version
-from packaging.requirements import Requirement, InvalidRequirement
-from condascout.parser import parse_args, parse_packages, standarize_package_name
+from packaging.requirements import Requirement
+from condascout.parser import parse_args, parse_packages, standarize_package_name, parse_commands
 from condascout.codes import ReturnCode, PackageCode
-from condascout.cache import get_cache, write_cache
-from condascout.display import display_have_table_output, get_progress_bar
+from condascout.cache import get_cache, write_cache, CacheType
+from condascout.display import display_table_output, get_progress_bar
 
 console = Console()
 
@@ -118,13 +117,18 @@ def main():
         console.print('[red]:x: Conda is not installed or not found in PATH[/red]')
         sys.exit(1)
     
-    if args.subcommand != 'have':
+    if args.subcommand == 'have':
+        cache_type = CacheType.PACKAGES
+        requirements = parse_packages(args.packages)
+    elif args.subcommand == 'can-execute':
+        cache_type = CacheType.COMMANDS
+        commands = parse_commands(args.command)
+    elif args.subcommand == 'compare':
+        cache_type = CacheType.COMMANDS
         raise NotImplementedError()
 
-    requirements = parse_packages(args.packages)
-
     if not args.no_cache:
-        cached_envs = get_cache()
+        cached_envs = get_cache(cache_type)
     else:
         cached_envs = {}
         console.print('[bold yellow]Running without cache, this may take a while[/bold yellow]')
@@ -143,9 +147,9 @@ def main():
                 break
     filtered_envs.sort(key=lambda x: (-x[1][0], -x[1][1], -x[1][2], x[1][3]))
 
-    write_cache(cached_envs)
+    write_cache(cached_envs, cache_type)
     
-    display_have_table_output(filtered_envs, args.limit, args.verbose, args.first)
+    display_table_output(filtered_envs, args.limit, args.verbose, args.first)
 
 
 if __name__ == '__main__':

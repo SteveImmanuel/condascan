@@ -34,6 +34,9 @@ def parse_args():
     
     return args
 
+def standarize_package_name(name: str):
+    return name.lower().replace('_', '-')
+
 def parse_packages(packages: str):
     if packages.endswith('.txt') or packages.endswith('.yaml') or packages.endswith('.yml'):
         if not osp.exists(packages):
@@ -86,5 +89,16 @@ def parse_packages(packages: str):
         
     return requirements
 
-def standarize_package_name(name: str):
-    return name.lower().replace('_', '-')
+def parse_commands(command_arg: str):
+    if command_arg.endswith('.txt'):
+        if not osp.exists(command_arg):
+            console.print(f':x:[red] File "{command_arg}" does not exist[/red]')
+            sys.exit(1)
+        
+        with open(command_arg, 'r') as f:
+            commands = [x.strip() for x in f.readlines() if not x.startswith('#') and x.strip() != '']
+
+    else:
+        commands = command_arg.strip()
+    
+    return commands
