@@ -3,7 +3,7 @@ from rich.console import Console
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, SpinnerColumn
 from rich.table import Table
 from typing import List, Tuple, Dict, Union
-from condascout.codes import PackageCode
+from condascan.codes import PackageCode
 
 console = Console()
 

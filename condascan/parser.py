@@ -8,7 +8,7 @@ from rich.console import Console
 console = Console()
 
 def parse_args():
-    parser = argparse.ArgumentParser(prog='condascout', description='condascout: a tool to find conda environments which contain specified package(s)')
+    parser = argparse.ArgumentParser(prog='condascan', description='condascan: a tool to find conda environments which contain specified package(s)')
     subparsers = parser.add_subparsers(dest='subcommand', required=True)
 
     subparser_have = subparsers.add_parser('have', description='find conda environments that have the specified package(s)', help='find conda environments that have the specified package(s)')

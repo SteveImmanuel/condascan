@@ -4,10 +4,10 @@ from typing import List, Union, Tuple, Dict
 from rich.console import Console
 from packaging.version import Version
 from packaging.requirements import Requirement
-from condascout.parser import parse_args, parse_packages, standarize_package_name, parse_commands
-from condascout.codes import ReturnCode, PackageCode
-from condascout.cache import get_cache, write_cache, CacheType
-from condascout.display import display_table_output, get_progress_bar
+from condascan.parser import parse_args, parse_packages, standarize_package_name, parse_commands
+from condascan.codes import ReturnCode, PackageCode
+from condascan.cache import get_cache, write_cache, CacheType
+from condascan.display import display_have_output, get_progress_bar
 
 console = Console()
 
@@ -149,7 +149,7 @@ def main():
 
     write_cache(cached_envs, cache_type)
     
-    display_table_output(filtered_envs, args.limit, args.verbose, args.first)
+    display_have_output(filtered_envs, args.limit, args.verbose, args.first)
 
 
 if __name__ == '__main__':
