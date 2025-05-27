@@ -99,6 +99,10 @@ def parse_commands(command_arg: str):
             commands = [x.strip() for x in f.readlines() if not x.startswith('#') and x.strip() != '']
 
     else:
-        commands = command_arg.strip()
+        commands = [command_arg.strip()]
+    
+    console.print(f'[green]:heavy_check_mark: Commands parsed successfully[/green]')
+    for command in commands:
+        console.print(f' [green] - {command}[/green]')
     
     return commands

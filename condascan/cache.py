@@ -10,8 +10,8 @@ class CacheType(Enum):
 
 console = Console()
 
-def get_and_create_cache_path(cache_type: CacheType):
-    cache_dir = osp.expanduser('~/.cache/condascout')
+def get_and_create_cache_path(cache_type: CacheType, cache_dir: str = '~/.cache/condascan'):
+    cache_dir = osp.expanduser(cache_dir)
     os.makedirs(cache_dir, exist_ok=True)
     path = osp.join(cache_dir, cache_type.value)
     return path

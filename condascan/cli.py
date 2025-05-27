@@ -7,7 +7,7 @@ from packaging.requirements import Requirement
 from condascan.parser import parse_args, parse_packages, standarize_package_name, parse_commands
 from condascan.codes import ReturnCode, PackageCode
 from condascan.cache import get_cache, write_cache, CacheType
-from condascan.display import display_have_output, get_progress_bar
+from condascan.display import display_have_output, get_progress_bar, display_can_exec_output
 
 console = Console()
 
@@ -49,11 +49,10 @@ def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict
     if cache.get(env) is None:
         result = run_shell_command(['conda', 'list', '-n', env])
         if result[0] != ReturnCode.EXECUTED:
-            return float('inf'), float('inf'), [('', (PackageCode.ERROR, 'Error checking environment'))]
+            return (), [('', (PackageCode.ERROR, 'Error checking environment'))], '', False
         installed_packages = result[1].stdout.splitlines()
         cache[env] = installed_packages
-    else:
-        installed_packages = cache[env]
+    installed_packages = cache[env]
 
     package_status = {x.name: (PackageCode.MISSING, x.specifier) for x in requirements}
     scores = [0, 0, 0, len(installed_packages)] # found, invalid, mismatch, #packages 
@@ -93,15 +92,47 @@ def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict
 
     return scores, [(package, status) for package, status in package_status.items()], python_version, scores[0] == len(requirements)
 
-def can_execute_in_env(env: str, command: str) -> Tuple[bool, str]:
-    result = run_shell_command(['conda', 'run', '-n', env, *command.split(' ')])
-    if result[0] != ReturnCode.EXECUTED:
-        return False, ''
+def can_execute_in_env(env: str, commands: List[str], cache: Dict) -> Tuple[List, str, bool]:
+    results = []
+    valid = True
     
-    if result[1].returncode == 0:
-        return True, result[1].stdout
-    else:
-        return False, result[1].stderr
+    python_version = 'Not Available'
+    python_command = 'python --version'
+    if cache.get(env, {}).get(python_command) is None:
+        result = run_shell_command(['conda', 'run', '-n', env, *python_command.split(' ')])
+        if result[0] != ReturnCode.EXECUTED:
+            return [('', (PackageCode.ERROR, 'Error checking environment'))], '', False
+        if result[1].returncode == 0:
+            exec_result = result[1].stdout.strip()
+            if exec_result.startswith('Python '):
+                python_version = exec_result.split(' ')[1]
+            else:
+                python_version = exec_result
+            exec_result = python_version
+        cache.setdefault(env, {})[python_command] = (True, exec_result)
+    python_version = cache[env][python_command][1]
+
+    for command in commands:
+        if cache.get(env, {}).get(command) is None:
+            result = run_shell_command(['conda', 'run', '-n', env, *command.split(' ')])
+            if result[0] != ReturnCode.EXECUTED:
+                return [('', (PackageCode.ERROR, 'Error checking environment'))], '', False
+            if result[1].returncode == 0:
+                exec_result = (True, result[1].stdout.strip())
+            else:
+                valid = False
+                error = result[1].stderr.strip()
+                conda_log_idx = error.index('\n\nERROR conda.cli.main_run:execute')
+                error = error[:conda_log_idx]
+                exec_result = (False, error)
+
+            cache.setdefault(env, {})[command] = exec_result
+        exec_result = cache[env][command]
+        valid = valid and exec_result[0]
+        
+        results.append((command, exec_result))
+
+    return results, python_version, valid
 
 def main():
     args = parse_args()
@@ -112,19 +143,21 @@ def main():
         sys.exit(1)
 
     if check_conda_installed():
-        console.print('[green]:heavy_check_mark: Conda is installed[/green] ')
+        console.print('[green]:heavy_check_mark: Conda is installed[/green]')
     else:
         console.print('[red]:x: Conda is not installed or not found in PATH[/red]')
         sys.exit(1)
     
     if args.subcommand == 'have':
         cache_type = CacheType.PACKAGES
-        requirements = parse_packages(args.packages)
+        func = check_packages_in_env
+        func_args = parse_packages(args.packages)
     elif args.subcommand == 'can-execute':
         cache_type = CacheType.COMMANDS
-        commands = parse_commands(args.command)
+        func = can_execute_in_env
+        func_args = parse_commands(args.command)
     elif args.subcommand == 'compare':
-        cache_type = CacheType.COMMANDS
+        cache_type = CacheType.PACKAGES
         raise NotImplementedError()
 
     if not args.no_cache:
@@ -140,17 +173,23 @@ def main():
         
         for env in conda_envs:
             progress.update(task, description=f'Checking "{env}"')
-            result = (env, *check_packages_in_env(env, requirements, cached_envs))
+            result = (env, *func(env, func_args, cached_envs))
             filtered_envs.append(result)
             progress.advance(task)
             if args.first and result[-1]:
                 filtered_envs = [result]
                 break
-    filtered_envs.sort(key=lambda x: (-x[1][0], -x[1][1], -x[1][2], x[1][3]))
-
     write_cache(cached_envs, cache_type)
-    
-    display_have_output(filtered_envs, args.limit, args.verbose, args.first)
+
+    if args.subcommand == 'have':
+        filtered_envs.sort(key=lambda x: (-x[1][0], -x[1][1], -x[1][2], x[1][3]))
+        display_have_output(filtered_envs, args.limit, args.verbose, args.first)
+    elif args.subcommand == 'can-execute':
+        filtered_envs.sort(key=lambda x: (-x[3]))
+        display_can_exec_output(filtered_envs, args.limit, args.verbose, args.first)
+    elif args.subcommand == 'compare':
+        raise NotImplementedError()
+        
 
 
 if __name__ == '__main__':
