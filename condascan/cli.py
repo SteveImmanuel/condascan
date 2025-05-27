@@ -85,7 +85,7 @@ def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict
                 if package == 'python':
                     python_version = version
 
-                if scores[0] == len(requirements):
+                if scores[0] == len(requirements) and python_version != 'Not Available':
                     break
     except Exception as e:
         console.print(f'[red]Unhandled Error in processing "{env}": {str(e)} [/red]')
@@ -144,6 +144,7 @@ def main():
             filtered_envs.append(result)
             progress.advance(task)
             if args.first and result[-1]:
+                filtered_envs = [result]
                 break
     filtered_envs.sort(key=lambda x: (-x[1][0], -x[1][1], -x[1][2], x[1][3]))
 

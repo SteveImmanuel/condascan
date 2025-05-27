@@ -27,4 +27,4 @@ def get_cache(cache_type: CacheType):
             return json.load(f)
     except Exception as e:
         console.print('[bold yellow]Cache not found or invalid. Running without cache, this may take a while[/bold yellow]')
-        return None
+        return {}
