@@ -10,6 +10,11 @@ You can install `condascan` using `pip`:
 pip install condascan
 ```
 
+Additionally, `conda` has to be installed on your system, either using `miniconda`, `anaconda`, `miniforge`, `mambaforge`, etc. Make sure that you can execute the following command:
+```bash
+conda --version
+```
+
 ## Usage
 
 ### Search by Requirements
@@ -31,13 +36,13 @@ condascan can-execute <command>
 - A string enclosed in quotes, specifying the command to run, e.g., `"nvcc --version"`.
 - A path to `.txt` file containing list of commands, one per line.
 
-**Note**: To determine if a command can be executed in a given environment, condascan will actually **run** the command inside each environment. This means any side effects (e.g., creating files, modifying state, or triggering installations) will occur if the command succeeds. Make sure the commands you're testing are safe and have predictable behavior across environments.
+**Note**: To determine if a command can be executed in a given environment, `condascan` will actually **run** the command inside each environment. This means any side effects (e.g., creating files, modifying state, or triggering installations) will occur if the command succeeds. Make sure the commands you're testing are safe and have predictable behavior across environments.
 
 ### Compare Environments
 TBA
 
 ### Caching
-To speed up execution, `condascan` cache the results of previous runs. The cache is stored in `~/.cache/condascan`. If in-between executing `condascan` you modify your conda environments, you can update the cache by adding `--no-cache` flag. For example:
+To speed up execution, `condascan` caches the results of previous runs. The cache is stored in `~/.cache/condascan`. If in-between executing `condascan` you modify your conda environments, you can update the cache by adding `--no-cache` flag. For example:
 ```bash
 condascan have "numpy pandas" --no-cache
 ```
