@@ -19,7 +19,7 @@ def parse_args():
     subparser_have.add_argument('--verbose', action='store_true', help='enable verbose output')
 
     subparser_exe = subparsers.add_parser('can-execute', description='find conda environments that can execute the specified command', help='find conda environments that can execute the specified command')
-    subparser_exe.add_argument('command', type=str, help='command to execute')
+    subparser_exe.add_argument('commands', type=str, help='command(s) to execute')
     subparser_exe.add_argument('--no-cache', action='store_true', help='force to run without using cached results from previous runs')
     subparser_exe.add_argument('--first', action='store_true', help='immediately return the first environment that satisfies the requirements. By default, perform a full search over all conda environments')
     subparser_exe.add_argument('--limit', type=int, help='limit the number of environments displayed in the output. Use in conjunction with verbose', default=-1)
@@ -119,7 +119,7 @@ def parse_envs(env_arg: str):
     else:
         envs = [x for x in env_arg.split(' ') if x != '']
     
-    if len(envs) < 2:
+    if len(set(envs)) < 2:
         console.print(f':x:[red] At least two environments are required for comparison[/red]')
         sys.exit(1)
     
