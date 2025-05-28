@@ -20,14 +20,14 @@ def get_progress_bar(console: Console) -> Progress:
 
 def display_have_output(filtered_envs: Tuple, limit: int = -1, verbose: bool = False, first: bool = False):
     if verbose:
-        table = Table(box=box.MINIMAL_HEAVY_HEAD, show_lines=True)
+        table = Table(title='Results', title_style='bold', box=box.MINIMAL_HEAVY_HEAD, show_lines=True)
         table.add_column('Environment', style='cyan', justify='left')
         table.add_column('Python Version', style='blue', justify='left')
         table.add_column('Total Packages Installed', style='magenta', justify='left')
         table.add_column('Info', justify='left')
 
         if limit != -1:
-            console.print(f'[bold]Limiting output to {limit} environments[/bold]')
+            console.print(f'\n[bold]Limiting output to {limit} environments[/bold]')
             filtered_envs = filtered_envs[:limit]
         for env in filtered_envs:
             info = []
@@ -41,36 +41,36 @@ def display_have_output(filtered_envs: Tuple, limit: int = -1, verbose: bool = F
                 elif status == PackageCode.ERROR:
                     info.append(f'[red]:exclamation: {package}: {detail}[/red]')
             table.add_row(env[0], str(env[3]), str(env[1][3]), '\n'.join(info))
-
+        console.print()
         console.print(table)
     else:
         filtered_envs = [x for x in filtered_envs if x[-1]]
         if len(filtered_envs) == 0:
-            console.print('[red]No environments found with all required packages. To see the details, run with --verbose[/red]')
+            console.print('\n[red]No environments found with all required packages. To see the details, run with --verbose[/red]')
         else:
             if first:
-                text = '[green]Found the first environment with all required packages:[/green]'
+                text = '\n[bold]Found the first environment with all required packages:[/bold]'
             else:
                 if limit == -1:
-                    text = f'[green]Found {len(filtered_envs)} environments with all required packages:[/green]'
+                    text = f'\n[bold]Found {len(filtered_envs)} environments with all required packages:[/bold]'
                 else:
+                    text = f'\n[bold]Found {len(filtered_envs)} environments with all required packages (output limited to {limit}):[/bold]'
                     filtered_envs = filtered_envs[:limit]
-                    text = f'[green]Found {len(filtered_envs)} environments with all required packages (output limited to {limit}):[/green]'
             
             console.print(text)
             for env in filtered_envs:
-                console.print(f'[green]- {env[0]}[/green]')
+                console.print(f'[green] • {env[0]}[/green]')
 
 def display_can_exec_output(filtered_envs: List, limit: int = -1, verbose: bool = False, first: bool = False):
     if verbose:
-        table = Table(box=box.MINIMAL_HEAVY_HEAD)
+        table = Table(title='Results', title_style='bold', box=box.MINIMAL_HEAVY_HEAD)
         table.add_column('Environment', style='cyan', justify='left')
         table.add_column('Python Version', style='blue', justify='left')
         table.add_column('Command', style='magenta', justify='left')
         table.add_column('Result', justify='left')
 
         if limit != -1:
-            console.print(f'[bold]Limiting output to {limit} environments[/bold]')
+            console.print(f'\n[bold]Limiting output to {limit} environments[/bold]')
             filtered_envs = filtered_envs[:limit]
         for env in filtered_envs:
             first = True
@@ -86,43 +86,51 @@ def display_can_exec_output(filtered_envs: List, limit: int = -1, verbose: bool 
                     table.add_row('', '', command, detail)
             table.add_section()
 
+        console.print()
         console.print(table)
     else:
         filtered_envs = [x for x in filtered_envs if x[-1]]
         if len(filtered_envs) == 0:
-            console.print('[red]No environments found that can execute the command. To see the details, run with --verbose[/red]')
+            console.print('\n[red]No environments found that can execute the command. To see the details, run with --verbose[/red]')
         else:
             if first:
-                text = '[green]Found the first environment that can execute the command:[/green]'
+                text = '\n[bold]Found the first environment that can execute the command:[/bold]'
             else:
                 if limit == -1:
-                    text = f'[green]Found {len(filtered_envs)} environments that can execute the command:[/green]'
+                    text = f'\n[bold]Found {len(filtered_envs)} environments that can execute the command:[/bold]'
                 else:
+                    text = f'\n[bold]Found {len(filtered_envs)} environments that can execute the command (output limited to {limit}):[/bold]'
                     filtered_envs = filtered_envs[:limit]
-                    text = f'[green]Found {len(filtered_envs)} environments that can execute the command (output limited to {limit}):[/green]'
             
             console.print(text)
             for env in filtered_envs:
-                console.print(f'[green]- {env[0]}[/green]')
+                console.print(f'[green] • {env[0]}[/green]')
 
 def display_compare_output(common_packages: List[str], distinct_packages: Dict[str, List[str]], packages_version: Dict[str, Dict[str, str]]):
-    common_table = Table(title='Common Packages', title_style='bold', box=box.MINIMAL_HEAVY_HEAD)
-    common_table.add_column('Package', style='cyan', justify='left')
-    color = 'blue'
-    for env in distinct_packages.keys():
-        color = 'blue' if color == 'magenta' else 'magenta'
-        common_table.add_column(f'Version in {env}', style=color, justify='left')
-    for package in common_packages:
-        versions = [packages_version[env][package] for env in distinct_packages.keys()]
-        common_table.add_row(package, *versions)
-    console.print(common_table)
+    if len(common_packages) > 0:
+        common_table = Table(title='Common Packages', title_style='bold', box=box.MINIMAL_HEAVY_HEAD)
+        common_table.add_column('Package', style='cyan', justify='left')
+        color = 'blue'
+        for env in distinct_packages.keys():
+            color = 'blue' if color == 'magenta' else 'magenta'
+            common_table.add_column(f'Version in {env}', style=color, justify='left')
+        for package in common_packages:
+            versions = [packages_version[env][package] for env in distinct_packages.keys()]
+            common_table.add_row(package, *versions)
+        console.print()
+        console.print(common_table)
+    else:
+        console.print('[bold]\nNo common packages between environments[/bold]')
     
     for env, packages in distinct_packages.items():
-        distinct_table = Table(title=f'Packages Only in {env}', title_style='bold', box=box.MINIMAL_HEAVY_HEAD)
-        distinct_table.add_column('Package', style='cyan', justify='left')
-        distinct_table.add_column('Version', style='magenta', justify='left')
-        for package in packages:
-            version = packages_version[env][package]
-            distinct_table.add_row(package, version)
-        
-        console.print(distinct_table)
+        if len(packages) > 0:
+            distinct_table = Table(title=f'Packages Only in {env}', title_style='bold', box=box.MINIMAL_HEAVY_HEAD)
+            distinct_table.add_column('Package', style='cyan', justify='left')
+            distinct_table.add_column('Version', style='magenta', justify='left')
+            for package in packages:
+                version = packages_version[env][package]
+                distinct_table.add_row(package, version)
+            console.print()
+            console.print(distinct_table)
+        else:
+            console.print(f'[bold]\nNo distinct package in {env}[/bold]')
