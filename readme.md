@@ -47,15 +47,15 @@ condascan compare <envs>
 - A string enclosed in quotes, specifying space-separated installed environment names, e.g., `"base env1 env2"`
 - A path to a `.txt` file containing list of installed environment names, one per line.
 
-### Caching
+## Caching
 To speed up execution, `condascan` caches the results of previous runs. The cache is stored in `~/.cache/condascan`. If in-between executing `condascan` you modify your conda environments or you want to run without cache, you can do so by adding `--no-cache` flag. For example:
 ```bash
 condascan have "numpy pandas" --no-cache
 ```
 
-### Formatting Output
+## Formatting Output
 
-#### Verbose, Limit, and First Flags
+### `--verbose`, `--limit`, and `--first` Flags
 **Note:** These flags are only applicable for `have` and `can-execute` commands
 
 To get the detailed output of `condascan`, you can add `--verbose` flag. For example:
@@ -72,7 +72,7 @@ For example:
 condascan have "numpy pandas" --first
 ```
 
-#### Pip Flag
+### `--pip` Flag
 **Note:** These flags are only applicable for `compare` command
 
 By default, the `compare` command will compare every installed package from any channel in the environments. If you want to compare only packages installed from `pip`, you can use the `--pip` flag. For example:
