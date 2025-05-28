@@ -106,3 +106,25 @@ def parse_commands(command_arg: str):
         console.print(f' [green] - {command}[/green]')
     
     return commands
+
+def parse_envs(env_arg: str):
+    if env_arg.endswith('.txt'):
+        if not osp.exists(env_arg):
+            console.print(f':x:[red] File "{env_arg}" does not exist[/red]')
+            sys.exit(1)
+        
+        with open(env_arg, 'r') as f:
+            envs = [x.strip() for x in f.readlines() if not x.startswith('#') and x.strip() != '']
+
+    else:
+        envs = [x for x in env_arg.split(' ') if x != '']
+    
+    if len(envs) < 2:
+        console.print(f':x:[red] At least two environments are required for comparison[/red]')
+        sys.exit(1)
+    
+    console.print(f'[green]:heavy_check_mark: Environments parsed successfully[/green]')
+    for env in envs:
+        console.print(f' [green] - {env}[/green]')
+    
+    return envs

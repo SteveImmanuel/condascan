@@ -4,10 +4,10 @@ from typing import List, Union, Tuple, Dict
 from rich.console import Console
 from packaging.version import Version
 from packaging.requirements import Requirement
-from condascan.parser import parse_args, parse_packages, standarize_package_name, parse_commands
+from condascan.parser import parse_args, parse_packages, standarize_package_name, parse_commands, parse_envs
 from condascan.codes import ReturnCode, PackageCode
 from condascan.cache import get_cache, write_cache, CacheType
-from condascan.display import display_have_output, get_progress_bar, display_can_exec_output
+from condascan.display import display_have_output, get_progress_bar, display_can_exec_output, display_compare_output
 
 console = Console()
 
@@ -50,8 +50,7 @@ def check_packages_in_env(env: str, requirements: List[Requirement], cache: Dict
         result = run_shell_command(['conda', 'list', '-n', env])
         if result[0] != ReturnCode.EXECUTED:
             return (), [('', (PackageCode.ERROR, 'Error checking environment'))], '', False
-        installed_packages = result[1].stdout.splitlines()
-        cache[env] = installed_packages
+        cache[env] = result[1].stdout.splitlines()
     installed_packages = cache[env]
 
     package_status = {x.name: (PackageCode.MISSING, x.specifier) for x in requirements}
@@ -134,11 +133,44 @@ def can_execute_in_env(env: str, commands: List[str], cache: Dict) -> Tuple[List
 
     return results, python_version, valid
 
+def compare_envs(envs: List[str], all_envs: List[str], cache: Dict) -> Tuple[List, Dict[str, List[str]], Dict[str, Dict[str, str]]]:
+    all_envs = set(all_envs)
+    envs = set(envs)
+    if not envs.issubset(all_envs):
+        console.print(f'[red]Error: Some environments {envs - all_envs} are not found in the installed environments[/red]')
+        sys.exit(1)
+
+    installed_packages = {}
+    packages_version = {}
+
+    for env in envs:
+        if cache.get(env) is None:
+            result = run_shell_command(['conda', 'list', '-n', env])
+            if result[0] != ReturnCode.EXECUTED:
+                return (), [('', (PackageCode.ERROR, 'Error checking environment'))], '', False
+            out = [x for x in result[1].stdout.splitlines() if x != '' and not x.startswith('#')]
+            out = [[y for y in x.split(' ') if y != ''] for x in out]
+            out = [(standarize_package_name(x[0]), x[1].strip()) for x in out]
+
+            cache[env] = out
+        
+        installed_packages[env] = set([x[0] for x in cache[env]])
+        for package, version in cache[env]:
+            packages_version.setdefault(env, {})[package] = version
+
+    env_names = list(installed_packages.keys())
+    env_packages = [installed_packages[env] for env in env_names]
+    common_packages = sorted(list(set.intersection(*env_packages)))
+    distinct_packages = [s - set.union(*(env_packages[:i] + env_packages[i+1:])) for i, s in enumerate(env_packages)]
+    distinct_packages = {env_names[i]: sorted(list(distinct_packages[i])) for i in range(len(env_names))}
+
+    return common_packages, distinct_packages, packages_version
+
 def main():
     args = parse_args()
 
     console.print('[bold]Initial checks[/bold]')
-    if args.limit <= 0 and args.limit != -1:
+    if args.subcommand != 'compare' and args.limit <= 0 and args.limit != -1:
         console.print('[red]Limit argument must be greater than 0[/red]')
         sys.exit(1)
 
@@ -148,6 +180,8 @@ def main():
         console.print('[red]:x: Conda is not installed or not found in PATH[/red]')
         sys.exit(1)
     
+    conda_envs = get_conda_envs()
+
     if args.subcommand == 'have':
         cache_type = CacheType.PACKAGES
         func = check_packages_in_env
@@ -158,7 +192,12 @@ def main():
         func_args = parse_commands(args.command)
     elif args.subcommand == 'compare':
         cache_type = CacheType.PACKAGES
-        raise NotImplementedError()
+        func_args = parse_envs(args.envs)
+        result = compare_envs(func_args, conda_envs, {})
+        # import pdb; pdb.set_trace()
+        display_compare_output(*result)
+        # print(result)
+        sys.exit(0)
 
     if not args.no_cache:
         cached_envs = get_cache(cache_type)
@@ -166,7 +205,6 @@ def main():
         cached_envs = {}
         console.print('[bold yellow]Running without cache, this may take a while[/bold yellow]')
 
-    conda_envs = get_conda_envs()
     filtered_envs = []
     with get_progress_bar(console) as progress:
         task = progress.add_task('Checking conda environments', total=len(conda_envs))
