@@ -28,7 +28,7 @@ def parse_args():
     subparser_compare = subparsers.add_parser('compare', description='compare different environments to find overlapping and distinct packages', help='compare different environments to find overlapping and distinct packages')
     subparser_compare.add_argument('envs', type=str, help='environments to compare')
     subparser_compare.add_argument('--no-cache', action='store_true', help='force to run without using cached results from previous runs')
-    subparser_compare.add_argument('--verbose', action='store_true', help='enable verbose output')
+    subparser_compare.add_argument('--pip', action='store_true', help='only compare pypi packages')
 
     args = parser.parse_args()
     
@@ -85,7 +85,7 @@ def parse_packages(packages: str):
 
     console.print(f'[green]:heavy_check_mark: Requirements parsed successfully[/green]')
     for req in requirements:
-        console.print(f' [green] - {req.name}{req.specifier}[/green]')
+        console.print(f' [green] • {req.name}{req.specifier}[/green]')
         
     return requirements
 
@@ -103,7 +103,7 @@ def parse_commands(command_arg: str):
     
     console.print(f'[green]:heavy_check_mark: Commands parsed successfully[/green]')
     for command in commands:
-        console.print(f' [green] - {command}[/green]')
+        console.print(f' [green] • {command}[/green]')
     
     return commands
 
@@ -125,6 +125,6 @@ def parse_envs(env_arg: str):
     
     console.print(f'[green]:heavy_check_mark: Environments parsed successfully[/green]')
     for env in envs:
-        console.print(f' [green] - {env}[/green]')
+        console.print(f' [green] • {env}[/green]')
     
     return envs

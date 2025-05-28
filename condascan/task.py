@@ -66,7 +66,9 @@ class Task:
             sys.exit(1)
         
         self.conda_envs = get_conda_envs()
+        self.process_args = self.parse_args()
 
+        console.print()
         if not self.args.no_cache:
             self.cached_envs = get_cache(self.cache_type)
         else:
@@ -74,9 +76,6 @@ class Task:
             console.print('[bold yellow]Running without cache, this may take a while[/bold yellow]')
 
     def process(self):
-        raise NotImplementedError()
-
-    def display_output(self):
         raise NotImplementedError()
 
     @staticmethod
@@ -144,13 +143,12 @@ class TaskFind(Task):
     
     def process(self):
         filtered_envs = []
-        requirements = self.parse_args()
 
         with get_progress_bar(console) as progress:
             task = progress.add_task('Checking conda environments', total=len(self.conda_envs))
             for env in self.conda_envs:
                 progress.update(task, description=f'Checking "{env}"')
-                result = (env,  *self._check_packages_in_env(env, requirements))
+                result = (env,  *self._check_packages_in_env(env, self.process_args))
                 filtered_envs.append(result)
                 progress.advance(task)
                 if self.args.first and result[-1]:
@@ -213,13 +211,12 @@ class TaskCanExecute(Task):
     
     def process(self):
         filtered_envs = []
-        commands = self.parse_args()
         with get_progress_bar(console) as progress:
             task = progress.add_task('Checking conda environments', total=len(self.conda_envs))
             
             for env in self.conda_envs:
                 progress.update(task, description=f'Checking "{env}"')
-                result = (env,  *self._can_execute_in_env(env, commands))
+                result = (env,  *self._can_execute_in_env(env, self.process_args))
                 filtered_envs.append(result)
                 progress.advance(task)
                 if self.args.first and result[-1]:
@@ -241,7 +238,7 @@ class TaskCompare(Task):
     def process(self):
         with get_progress_bar(console) as progress:
             all_envs = set(self.conda_envs)
-            envs = set(self.parse_args())
+            envs = set(self.process_args)
             if not envs.issubset(all_envs):
                 console.print(f'[red]Error: Some environments {envs - all_envs} are not found in the installed environments[/red]')
                 sys.exit(1)
@@ -262,7 +259,7 @@ class TaskCompare(Task):
 
                 out = [x for x in self.cached_envs[env] if x != '' and not x.startswith('#')]
                 out = [[y for y in x.split(' ') if y != ''] for x in out]
-                out = [(standarize_package_name(x[0]), x[1].strip()) for x in out if x[-1] == 'pypi']
+                out = [(standarize_package_name(x[0]), x[1].strip()) for x in out if not self.args.pip or x[-1] == 'pypi']
                 
                 installed_packages[env] = set([x[0] for x in out])
                 for package, version in out:
