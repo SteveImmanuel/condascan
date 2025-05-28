@@ -18,7 +18,7 @@ def get_progress_bar(console: Console) -> Progress:
         transient=True,
     )
 
-def display_have_output(filtered_envs: Tuple, limit: int = -1, verbose: bool = False, first: bool = False) -> Table:
+def display_have_output(filtered_envs: Tuple, limit: int = -1, verbose: bool = False, first: bool = False):
     if verbose:
         table = Table(box=box.MINIMAL_HEAVY_HEAD, show_lines=True)
         table.add_column('Environment', style='cyan', justify='left')
@@ -61,7 +61,7 @@ def display_have_output(filtered_envs: Tuple, limit: int = -1, verbose: bool = F
             for env in filtered_envs:
                 console.print(f'[green]- {env[0]}[/green]')
 
-def display_can_exec_output(filtered_envs: List, limit: int = -1, verbose: bool = False, first: bool = False) -> Table:
+def display_can_exec_output(filtered_envs: List, limit: int = -1, verbose: bool = False, first: bool = False):
     if verbose:
         table = Table(box=box.MINIMAL_HEAVY_HEAD)
         table.add_column('Environment', style='cyan', justify='left')
@@ -104,3 +104,25 @@ def display_can_exec_output(filtered_envs: List, limit: int = -1, verbose: bool 
             console.print(text)
             for env in filtered_envs:
                 console.print(f'[green]- {env[0]}[/green]')
+
+def display_compare_output(common_packages: List[str], distinct_packages: Dict[str, List[str]], packages_version: Dict[str, Dict[str, str]]):
+    common_table = Table(title='Common Packages', title_style='bold', box=box.MINIMAL_HEAVY_HEAD)
+    common_table.add_column('Package', style='cyan', justify='left')
+    color = 'blue'
+    for env in distinct_packages.keys():
+        color = 'blue' if color == 'magenta' else 'magenta'
+        common_table.add_column(f'Version in {env}', style=color, justify='left')
+    for package in common_packages:
+        versions = [packages_version[env][package] for env in distinct_packages.keys()]
+        common_table.add_row(package, *versions)
+    console.print(common_table)
+    
+    for env, packages in distinct_packages.items():
+        distinct_table = Table(title=f'Packages Only in {env}', title_style='bold', box=box.MINIMAL_HEAVY_HEAD)
+        distinct_table.add_column('Package', style='cyan', justify='left')
+        distinct_table.add_column('Version', style='magenta', justify='left')
+        for package in packages:
+            version = packages_version[env][package]
+            distinct_table.add_row(package, version)
+        
+        console.print(distinct_table)
