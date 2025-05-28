@@ -33,26 +33,36 @@ To see if a command is available in any of your conda environments, use the `can
 condascan can-execute <command>
 ```
 `<command>` can be one of the following:
-- A string enclosed in quotes, specifying the command to run, e.g., `"nvcc --version"`.
+- A string enclosed in quotes, specifying the command to run, e.g., `"nvcc --version"`
 - A path to `.txt` file containing list of commands, one per line.
 
 **Note**: To determine if a command can be executed in a given environment, `condascan` will actually **run** the command inside each environment. This means any side effects (e.g., creating files, modifying state, or triggering installations) will occur if the command succeeds. Make sure the commands you're testing are safe and have predictable behavior across environments.
 
 ### Compare Environments
-TBA
+To compare two or more environments, use the `compare` command:
+```bash
+condascan compare <envs>
+```
+<envs> can be one of the following:
+- A string enclosed in quotes, specifying space-separated installed environment names, e.g., `"base env1 env2"`
+- A path to a `.txt` file containing list of installed environment names, one per line.
 
 ### Caching
-To speed up execution, `condascan` caches the results of previous runs. The cache is stored in `~/.cache/condascan`. If in-between executing `condascan` you modify your conda environments, you can update the cache by adding `--no-cache` flag. For example:
+To speed up execution, `condascan` caches the results of previous runs. The cache is stored in `~/.cache/condascan`. If in-between executing `condascan` you modify your conda environments or you want to run without cache, you can do so by adding `--no-cache` flag. For example:
 ```bash
 condascan have "numpy pandas" --no-cache
 ```
 
 ### Formatting Output
+
+#### Verbose, Limit, and First Flags
+**Note:** These flags are only applicable for `have` and `can-execute` commands
+
 To get the detailed output of `condascan`, you can add `--verbose` flag. For example:
 ```bash
 condascan can-execute "nvcc --version" --verbose
 ```
-To limit the number of environments displayed in the output, you can use the `--limit` flag. For example:
+To limit the number of environments displayed in the output, you can use the `--limit` flag. Note that this is only applicable for `have` and `can-execute` commands. For example:
 ```bash
 condascan have "numpy pandas" --limit 5
 ```
@@ -61,3 +71,12 @@ For example:
 ```bash
 condascan have "numpy pandas" --first
 ```
+
+#### Pip Flag
+**Note:** These flags are only applicable for `compare` command
+
+By default, the `compare` command will compare every installed package from any channel in the environments. If you want to compare only packages installed from `pip`, you can use the `--pip` flag. For example:
+```bash
+condascan compare "env1 env2" --pip
+```
+
